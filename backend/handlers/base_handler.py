@@ -8,6 +8,7 @@ from sqlalchemy.orm import load_only
 
 from backend.modules.base_module import BaseModule
 from backend.modules.config import Config
+from backend.models import User
 
 logger = logging.getLogger("basehandler")
 from backend.modules.session import Session
@@ -36,11 +37,11 @@ class BaseHandler(tornado.web.RequestHandler):
         if tornado.netutil.is_valid_ip(forwarded_ip):
             self.request.remote_ip = forwarded_ip
 
-        if not self.is_api_call():
-            if not self.get_session_id():
-                if not self.start_session():
-                    logger.info("Start session")
-                    return self.db.close()
+        #if not self.is_api_call():
+        #    if not self.get_session_id():
+        #        if not self.start_session():
+        #            logger.info("Start session")
+        #            return self.db.close()
 
         if self.request.uri.startswith('/api/'):
             self.set_header('Content-Type', 'application/json')
@@ -48,7 +49,7 @@ class BaseHandler(tornado.web.RequestHandler):
 
         BaseModule.locale_code = self._get_locale()
         BaseModule._ = self._
-        BaseModule.session = self.session
+        #BaseModule.session = self.session
         self.set_default_render_data()
         BaseModule.current_user = self.get_current_user()
 
@@ -156,13 +157,13 @@ class BaseHandler(tornado.web.RequestHandler):
         else:
             return "wpsid"
 
-    @property
-    def session(self):
-        session_sid = self.get_secure_cookie(self.get_session_cookie_name())
-        if session_sid:
-            return Session(self.application.session_store, session_sid.decode("utf8"))
-        else:
-            return Session(self.application.session_store, session_sid)
+    #@property
+    #def session(self):
+    #    session_sid = self.get_secure_cookie(self.get_session_cookie_name())
+    #    if session_sid:
+    #        return Session(self.application.session_store, session_sid.decode("utf8"))
+    #    else:
+    #        return Session(self.application.session_store, session_sid)
 
     def is_user_logged_in(self):
         return True if self.session and 'user' in self.session else False

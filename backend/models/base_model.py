@@ -5,7 +5,7 @@ import logging
 import sqlalchemy
 from sqlalchemy import Column, MetaData, DateTime, func, text, Boolean
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import class_mapper
+from sqlalchemy.orm import class_mapper, relationship, deferred
 from tornado.escape import json_encode
 
 mymetadata = MetaData()
@@ -53,11 +53,11 @@ class BaseModel(object):
                             or isinstance(r, decimal.Decimal) \
                             or isinstance(r, datetime.time):
                         result[name] = str(r).strip()
-                    elif name in self.__json_fields__:
-                        if r:
-                            result[name] = json.loads(r)
-                        else:
-                            result[name] = dict()
+                    # elif name in self.__json_fields__:
+                    #     if r:
+                    #         result[name] = json.loads(r)
+                    #     else:
+                    #         result[name] = dict()
                     elif name == 'content':
                         ## DO NOT STRIP CHOICE CONTENT!
                         result[name] = r
