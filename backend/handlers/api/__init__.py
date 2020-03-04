@@ -1,2 +1,2 @@
 
-from .api_user_site_handler import APIUserSiteHandler
+from .api_v1_user_site_handler import APIV1UserSiteHandler

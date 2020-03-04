@@ -5,12 +5,13 @@ from urllib.parse import urlparse
 import sqlalchemy
 import tornado.web
 from sqlalchemy.orm import load_only
+from tornado.escape import json_encode
 
+from backend.models import User
 from backend.modules.base_module import BaseModule
 from backend.modules.config import Config
-from backend.models import User
 
-logger = logging.getLogger("basehandler")
+logger = logging.getLogger("base-handler")
 from backend.modules.session import Session
 
 
@@ -25,6 +26,9 @@ class BaseHandler(tornado.web.RequestHandler):
     CHECK_COOKIE = None
 
     def prepare(self):
+        if self.request.method == "OPTIONS":
+            super(BaseHandler, self)
+            return self.finish()
         try:
             url = urlparse(self.request.full_url())
             self.hostname = '%s://%s' % (url.scheme, url.hostname)
@@ -36,12 +40,10 @@ class BaseHandler(tornado.web.RequestHandler):
 
         if tornado.netutil.is_valid_ip(forwarded_ip):
             self.request.remote_ip = forwarded_ip
-
-        #if not self.is_api_call():
-        #    if not self.get_session_id():
-        #        if not self.start_session():
-        #            logger.info("Start session")
-        #            return self.db.close()
+        if not self.get_session_id():
+            if not self.start_session():
+                logger.info("Start session")
+                return self.db.close()
 
         if self.request.uri.startswith('/api/'):
             self.set_header('Content-Type', 'application/json')
@@ -49,16 +51,16 @@ class BaseHandler(tornado.web.RequestHandler):
 
         BaseModule.locale_code = self._get_locale()
         BaseModule._ = self._
-        #BaseModule.session = self.session
+        BaseModule.session = self.session
         self.set_default_render_data()
         BaseModule.current_user = self.get_current_user()
-
         self.update_session_cookie()
         super(BaseHandler, self)
 
     def check_xsrf_cookie(self):
-
         # Except some URLs
+        if Config.get_value('app', 'debug') == "True":
+            return True
         try:
             return super(BaseHandler, self).check_xsrf_cookie()
         except Exception as e:
@@ -79,14 +81,25 @@ class BaseHandler(tornado.web.RequestHandler):
             self.set_current_user(user)
         return user
 
+    def delete_logged_in_cookie(self):
+        cookie_hostname = self.get_cookie_domain()
+        self.clear_cookie('t', path="/", domain=cookie_hostname)
+
     def regenerate_session_token(self):
         sess = Session(self.application.session_store, self.session.sessionid)
         # Get the session info and redirect it to new session Key
         nk = sess.change_session_key()
         expires = self.get_cookie_expiry_date()
-        self.set_secure_cookie(self.get_session_cookie_name(), sess.sessionid, expires=expires, path='/',
-                               domain=self.get_cookie_domain(), secure=True,
-                               httponly=True)
+        secure = False
+        if "https" in self.hostname:
+            secure = True
+        self.set_secure_cookie(self.get_session_cookie_name(),
+                               sess.sessionid,
+                               expires=expires,
+                               path='/',
+                               domain=self.get_cookie_domain(),
+                               secure=secure,
+                               httponly=False)
 
     def set_current_user(self, user):
         self.session['user'] = user
@@ -110,10 +123,13 @@ class BaseHandler(tornado.web.RequestHandler):
                     'expires_at' in self.session and self.session['expires_at'] <= will_expire):
                 # Set expires
                 self.session['expires_at'] = expires
+                secure = False
+                if "https" in self.hostname:
+                    secure = True
                 self.set_secure_cookie(self.get_session_cookie_name(), self.session.sessionid, expires=expires,
                                        path='/',
-                                       domain=self.get_cookie_domain(), secure=True,
-                                       httponly=True)
+                                       domain=self.get_cookie_domain(), secure=secure,
+                                       httponly=False)
 
     def start_session(self):
         domain = self.get_cookie_domain()
@@ -123,14 +139,17 @@ class BaseHandler(tornado.web.RequestHandler):
                 "Should clear up cookie as there is no sess id, but cookie exists. SessID: %s" % self.get_session_id())
         logger.info("Setting secure cookie for domain %s with name %s" % (domain, self.get_session_cookie_name()))
         expires = self.get_cookie_expiry_date()
-        print(domain)
+        secure = False
+        if "https" in self.hostname:
+            secure = True
         self.set_secure_cookie(self.get_session_cookie_name(), self.session.sessionid, expires=expires, path='/',
-                               domain=domain, secure=False,
-                               httponly=True)
+                               domain=domain,
+                               secure=secure,
+                               httponly=False)
         self.session['expires_at'] = expires
         self.db.close()
-        if not self.is_bot() and not self.get_argument("up", None):
-            return self.redirect(self.request.uri)
+        # if not self.is_bot() and not self.get_argument("up", None):
+        #    return self.redirect(self.request.uri)
         return True
 
     def get_cookie_expiry_date(self):
@@ -145,8 +164,8 @@ class BaseHandler(tornado.web.RequestHandler):
         return expires
 
     def get_session_id(self):
-        if self.get_secure_cookie(self.get_session_cookie_name(), max_age_days=0.08):
-            return self.get_secure_cookie(self.get_session_cookie_name(), max_age_days=0.08).decode("utf8")
+        if self.get_secure_cookie(self.get_session_cookie_name(), max_age_days=30):
+            return self.get_secure_cookie(self.get_session_cookie_name(), max_age_days=30).decode("utf8")
         else:
             return None
 
@@ -155,20 +174,22 @@ class BaseHandler(tornado.web.RequestHandler):
         if cookie_name:
             return cookie_name
         else:
-            return "wpsid"
+            return "tootjasid"
 
-    #@property
-    #def session(self):
-    #    session_sid = self.get_secure_cookie(self.get_session_cookie_name())
-    #    if session_sid:
-    #        return Session(self.application.session_store, session_sid.decode("utf8"))
-    #    else:
-    #        return Session(self.application.session_store, session_sid)
+    @property
+    def session(self):
+        session_sid = self.get_secure_cookie(self.get_session_cookie_name())
+        if session_sid:
+            return Session(self.application.session_store, session_sid.decode("utf8"))
+        else:
+            return Session(self.application.session_store, session_sid)
 
     def is_user_logged_in(self):
         return True if self.session and 'user' in self.session else False
 
     def is_api_call(self):
+        if "user/is-logged-in" in self.request.full_url():
+            return False
         return self.CHECK_COOKIE == "SKIP" or self.request.headers.get(
             "X-Requested-With") == "XMLHttpRequest" or 'api/v1/' in self.request.full_url()
 
@@ -209,10 +230,13 @@ class BaseHandler(tornado.web.RequestHandler):
         self.render_data['xsrf_token'] = self.xsrf_token
         self.render_data['_'] = self._
         self.render_data['config']['static_root'] = Config.get_value('app', 'static_root')
+        self.render_data['config']['static_path'] = Config.get_value('app', 'static_path')
         self.render_data['config']['url'] = Config.get_value('app', 'url')
         self.render_data['config']['templates_dir'] = Config.get_value('app', 'templates_dir')
         self.render_data['config']['use_minified_resources'] = Config.get_value('app',
                                                                                 'use_minified_resources') == 'True'
+
+        self.render_data['is_logged_in'] = self.is_user_logged_in()
 
     def get_template_path(self):
         """ Override for parent template
@@ -233,3 +257,29 @@ class BaseHandler(tornado.web.RequestHandler):
         self.db.close()
         import sys
         sys.stdout.flush()
+
+    def options(self, *args, **kwargs):
+        pass
+
+    def error_response(self, messages):
+        """
+        Sends json as a result with correct headers and status code
+        :param messages:
+        """
+        response_object = {
+            'errors': messages
+        }
+        self.set_header('Content-Type', 'application/json')
+        self.set_status(422, 'Unprocessable Entity')
+        self.write(json_encode(response_object))
+
+    def set_default_headers(self):
+        if Config.get_value('app', 'debug') == "True":
+            if 'Origin' in self.request.headers:
+                self.set_header("Access-Control-Allow-Origin", "%s" % self.request.headers['Origin'])
+            self.set_header('Access-Control-Allow-Credentials', "true")
+            self.set_header('Access-Control-Allow-Methods', "GET, POST, PUT, OPTIONS, DELETE")
+            self.set_header('Access-Control-Expose-Headers', "Content-Type, Set-Cookie")
+            self.set_header('Access-Control-Allow-Headers',
+                            "Content-Type, Depth, User-Agent, X-File-Size, X-Requested-With, X-Requested-By, If-Modified-Since, X-File-Name, Cache-Control, Set-Cookie, x-csrf-token, x-xsrftoken")
+            self.set_header('Access-Control-Max-Age', 600)

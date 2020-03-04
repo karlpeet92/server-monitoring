@@ -1,13 +1,4 @@
-import tornado.web
-import requests
-
-from tornroutes import route
-from backend.modules.base_module import BaseModule
-from backend.models.user import User
-from backend.modules.connection import Connection                                       
-from backend.modules.config import Config
-
-
+"""
 @route("/")
 class HomeHandler(tornado.web.RequestHandler):
     def get(self, *args, **kwargs):
@@ -26,3 +17,15 @@ class HomeHandler(tornado.web.RequestHandler):
         render_data['config'] = dict(templates_dir=templates_dir, static_root=static_root)
         return self.render('%s/home.vue' % render_data['config']['templates_dir'], **render_data)
 
+"""
+from tornroutes import route
+
+from backend.handlers.base_handler import BaseHandler
+
+
+@route("/.*")
+class HomeHandler(BaseHandler):
+    def get(self, *args, **kwargs):
+        data = self.render_data
+        data['xsrf_token'] = self.xsrf_token
+        return self.render('%s/dist/index.html' % data['config']['static_path'], **data)

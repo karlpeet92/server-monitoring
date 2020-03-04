@@ -1,17 +1,15 @@
-import tornado.web
-import requests
 import json
 
+import tornado.web
 from tornroutes import route
-from backend.modules.base_module import BaseModule
-from backend.models.user_site import UserSite
-from backend.models.site import Site
-from backend.modules.connection import Connection                                       
-from backend.modules.config import Config
-from tornado.escape import json_encode
 
-@route("/api/user-site/(.*)")
-class APIUserSiteHandler(tornado.web.RequestHandler):
+from backend.models.site import Site
+from backend.models.user_site import UserSite
+from backend.modules.base_module import BaseModule
+
+
+@route("/api/v1/user-site/?(.*)?")
+class APIV1UserSiteHandler(tornado.web.RequestHandler):
     _VIEW_TITLE_ = "UserSite"
 
     def get(self, args, *kwargs):
@@ -35,8 +33,3 @@ class APIUserSiteHandler(tornado.web.RequestHandler):
         json_site = json.dumps(site_array, indent=2)
         print(json_site)
         return self.write(json_site)
-        
-
-    
-        
-            
