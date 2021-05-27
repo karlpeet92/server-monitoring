@@ -62,7 +62,7 @@ class Config:
                                                               backupCount=365,
                                                               utc=True)
 
-        tornado_hdlr = logging.handlers.TimedRotatingFileHandler('/c/Users/Karl/Documents/pyweb/server-monitor/logs/tornado-server.log',
+        tornado_hdlr = logging.handlers.TimedRotatingFileHandler('/var/www/server-monitor/backend/tornado-server.log',
                                                                  when='midnight',
                                                                  backupCount=365,
                                                                  utc=True)

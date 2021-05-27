@@ -1,27 +1,25 @@
-<template>
-    <body>
-    <div>
+<template id='vueapp'>
+
+
+    <div >
         <ol>
-            <li>site ID: {{id}},</li>
-            <li>name: {{name}},</li>
-            <li>URL: {{url}}</li>
-        </ol>            
+            <li>ID:</li>
+            <li>email:</li>
+            <button id="site_button" onclick= "openSite()">user site</button>
+        </ol>
     </div>
-</body>
+
 </template>
 
 <script>
     export default {
-        name:"Site",
-
+        name:"user",
         data() {
             return {
                 id: null,
                 name: null,
-                URL: null
+                url: null
             }
-        },
-        methods: {
         }
     }
 </script>

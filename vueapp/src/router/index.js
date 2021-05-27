@@ -1,13 +1,13 @@
 import Vue from "vue";
 import VueRouter from "vue-router";
-import SitesPage from "../pages/sites/sites.vue";
+import SiteData from "../pages/sites/sites.vue";
 
 Vue.use(VueRouter);
 let routes = [
     {
         path: "/",
         name: "sites",
-        component: SitesPage,
+        component: SiteData,
     }
 ];
 let router = new VueRouter({

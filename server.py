@@ -1,7 +1,6 @@
-# from modules import RedisSessionStore
-# import httplib2
 import logging
 import sys
+import redis
 
 #import redis
 import tornado.ioloop
@@ -13,8 +12,7 @@ from backend.handlers import *
 from backend.modules.base_module import BaseModule
 from backend.modules.connection import Connection
 from backend.modules.config import Config
-#from backend.modules.session import RedisSessionStore
-
+from backend.modules.session import RedisSessionStore
 
 BaseModule.__init__()
 logger = logging.getLogger("init")
@@ -33,9 +31,9 @@ class Application(tornado.web.Application):
                                          cookie_secret=Config.get_value('secrets', 'cookie_secret'),
                                          xsrf_cookies=True, serve_traceback=debug
                                          )
-        #self.redis = redis.StrictRedis(host='127.0.0.1', port=6379, db=0,
-        #                               password=Config.get_value('redis', 'password'))
-        #self.session_store = RedisSessionStore(self.redis)
+        self.redis = redis.StrictRedis(host='127.0.0.1', port=6379, db=0,
+                                       password=Config.get_value('redis', 'password'))
+        self.session_store = RedisSessionStore(self.redis)
         self.db = Connection.get_connection()  # scoped_session(sessionmaker(bind=engine))
 
    
